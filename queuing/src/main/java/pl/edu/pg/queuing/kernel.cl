@@ -1,0 +1,179 @@
+// based on https://github.com/JogAmp/jocl-demos/blob/master/src/com/jogamp/opencl/demos/hellojocl/VectorAdd.cl
+
+#define INTERVAL_MEAN  10
+#define INTERVAL_DEV  3
+#define REQUIREMENT_MEAN  30
+#define REQUIREMENT_DEV  5
+#define QUEUE_SIZE  20
+#define CPU_POWER  4
+#define RANDOM_SEED 24352445523
+#define TASK_NUMBER 10000
+
+//random algorithm from Java
+uint random(ulong * seed)
+{
+	*seed = (*seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
+	return *seed >> 16;
+}
+
+//Moro's Inverse Cumulative Normal Distribution function approximation from NVIDIA example
+float MoroInvCNDgpu(unsigned int x)
+{
+	const float a1 = 2.50662823884f;
+	const float a2 = -18.61500062529f;
+	const float a3 = 41.39119773534f;
+	const float a4 = -25.44106049637f;
+	const float b1 = -8.4735109309f;
+	const float b2 = 23.08336743743f;
+	const float b3 = -21.06224101826f;
+	const float b4 = 3.13082909833f;
+	const float c1 = 0.337475482272615f;
+	const float c2 = 0.976169019091719f;
+	const float c3 = 0.160797971491821f;
+	const float c4 = 2.76438810333863E-02f;
+	const float c5 = 3.8405729373609E-03f;
+	const float c6 = 3.951896511919E-04f;
+	const float c7 = 3.21767881768E-05f;
+	const float c8 = 2.888167364E-07f;
+	const float c9 = 3.960315187E-07f;
+
+	float z;
+
+	bool negate = false;
+
+	// Ensure the conversion to floating point will give a value in the
+	// range (0,0.5] by restricting the input to the bottom half of the
+	// input domain. We will later reflect the result if the input was
+	// originally in the top half of the input domain
+
+	if (x >= 0x80000000UL)
+	{
+		x = 0xffffffffUL - x;
+		negate = true;
+	}
+
+	// x is now in the range [0,0x80000000) (i.e. [0,0x7fffffff])
+	// Convert to floating point in (0,0.5]
+	const float x1 = 1.0f / (float)0xffffffffUL;
+	const float x2 = x1 / 2.0f;
+	float p1 = x * x1 + x2;
+
+	// Convert to floating point in (-0.5,0]
+	float p2 = p1 - 0.5f;
+
+	// The input to the Moro inversion is p2 which is in the range
+	// (-0.5,0]. This means that our output will be the negative side
+	// of the bell curve (which we will reflect if "negate" is true).
+
+	// Main body of the bell curve for |p| < 0.42
+	if (p2 > -0.42f)
+	{
+		z = p2 * p2;
+		z = p2 * (((a4 * z + a3) * z + a2) * z + a1) / ((((b4 * z + b3) * z + b2) * z + b1) * z + 1.0f);
+	}
+	// Special case (Chebychev) for tail
+	else
+	{
+		z = log(-log(p1));
+		z = - (c1 + z * (c2 + z * (c3 + z * (c4 + z * (c5 + z * (c6 + z * (c7 + z * (c8 + z * c9))))))));
+	}
+
+	// If the original input (x) was in the top half of the range, reflect
+	// to get the positive side of the bell curve
+	return negate ? -z : z;
+}
+
+float normDistribution(ulong *seed, float mean, float dev)
+{
+	float rand = MoroInvCNDgpu(random(seed));
+
+	return rand*dev + mean;
+}
+
+struct queue
+{
+	float data[QUEUE_SIZE+1];
+	int p,k; //pierwszy, zaostatni
+};
+
+void init(queue * q)
+{
+	q->p = q->e = 0;
+}
+bool empty(const queue *q)
+{
+	return q->p == q->k;
+}
+float front(const queue * q)
+{
+	return q->d[q->p];
+}
+void pop(queue *q)
+{
+	q->p++;
+}
+void push(queue *q, float l)
+{
+	q->d[q->k++] = l;
+	if(q->k > QUEUE_SIZE)
+		q->k = 0;
+}
+bool full(const queue *q)
+{
+	return q->k == q->p-1 || (q->k == QUEUE_SIZE && q->p == 0);
+}
+
+kernel void RunSimulation(global float *L)
+{
+	ulong seed = RANDOM_SEED;
+
+	int i;
+	float time = 0; //czas, jaki juz przetwarzamy pierwszy element
+	int accepted = 0, rejected = 0;
+
+	queue q;
+	init(&q);
+
+	for(i=0; i<TASK_NUMBER; ++i)
+	{
+		//wygeneruj kolejne zadanie
+		float interval = normDistribution(&seed, INTERVAL_MEAN, INTERVAL_DEV);
+		float req = normDistribution(&seed, REQUIREMENT_MEAN, REQUIREMENT_DEV);
+
+		//przetworz zadania w kolejce
+		while(!empty(&q) && front(&q) - time < interval)
+		{
+			time = 0;
+			interval -= front(&q);
+			pop(&q);
+		}
+
+		time = interval;
+
+		if(full(&q))
+			rejected++;
+		else
+		{
+			push(&q, req);
+			accepted++;
+		}
+	}
+
+	*l = ((float)rejected) / (accepted + rejected);
+}
+
+/*// OpenCL Kernel Function for element by element vector addition
+kernel void VectorAdd(global const float* a, global const float* b, global float* c, int numElements) {
+
+	// get index into global data array
+	int iGID = get_global_id(0);
+
+	// bound check (equivalent to the limit on a 'for' loop for standard/serial C code
+	if (iGID >= numElements) {
+		return;
+	}
+
+	// add the vector elements
+	c[iGID] = a[iGID] + b[iGID];
+}
+*/
