@@ -1,13 +1,10 @@
-// based on https://github.com/JogAmp/jocl-demos/blob/master/src/com/jogamp/opencl/demos/hellojocl/VectorAdd.cl
-
 #define INTERVAL_MEAN  10
 #define INTERVAL_DEV  3
 #define REQUIREMENT_MEAN  30
 #define REQUIREMENT_DEV  5
-#define QUEUE_SIZE  20
-#define CPU_POWER  4
+#define QUEUE_SIZE  10
 #define RANDOM_SEED 24352445523
-#define TASK_NUMBER 10000
+#define TASK_NUMBER 100000
 
 //random algorithm from Java
 uint random(ulong * seed)
@@ -144,11 +141,12 @@ kernel void RunSimulation(global float *L)
 		while(!empty(&q) && front(&q) - time < interval)
 		{
 			time = 0;
-			interval -= front(&q);
+			interval -= (front(&q) - time);
 			pop(&q);
 		}
 
-		time = interval;
+		if(!empty(&q))
+			time = interval;
 
 		if(full(&q))
 			rejected++;
@@ -158,22 +156,8 @@ kernel void RunSimulation(global float *L)
 			accepted++;
 		}
 	}
-	
+
 	*L = ((float)rejected) / (accepted + rejected);
 }
 
-/*// OpenCL Kernel Function for element by element vector addition
-kernel void VectorAdd(global const float* a, global const float* b, global float* c, int numElements) {
 
-	// get index into global data array
-	int iGID = get_global_id(0);
-
-	// bound check (equivalent to the limit on a 'for' loop for standard/serial C code
-	if (iGID >= numElements) {
-		return;
-	}
-
-	// add the vector elements
-	c[iGID] = a[iGID] + b[iGID];
-}
-*/
