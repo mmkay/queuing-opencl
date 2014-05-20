@@ -90,15 +90,15 @@ float normDistribution(ulong *seed, float mean, float dev)
 	return rand*dev + mean;
 }
 
-struct queue
+typedef struct queue
 {
 	float data[QUEUE_SIZE+1];
 	int p,k; //pierwszy, zaostatni
-};
+} queue;
 
 void init(queue * q)
 {
-	q->p = q->e = 0;
+	q->p = q->k = 0;
 }
 bool empty(const queue *q)
 {
@@ -106,7 +106,7 @@ bool empty(const queue *q)
 }
 float front(const queue * q)
 {
-	return q->d[q->p];
+	return q->data[q->p];
 }
 void pop(queue *q)
 {
@@ -114,7 +114,7 @@ void pop(queue *q)
 }
 void push(queue *q, float l)
 {
-	q->d[q->k++] = l;
+	q->data[q->k++] = l;
 	if(q->k > QUEUE_SIZE)
 		q->k = 0;
 }
@@ -158,8 +158,8 @@ kernel void RunSimulation(global float *L)
 			accepted++;
 		}
 	}
-
-	*l = ((float)rejected) / (accepted + rejected);
+	
+	*L = ((float)rejected) / (accepted + rejected);
 }
 
 /*// OpenCL Kernel Function for element by element vector addition
