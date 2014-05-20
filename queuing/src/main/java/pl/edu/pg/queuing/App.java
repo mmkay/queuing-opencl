@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.Random;
 
+import com.jogamp.opencl.CLBuffer;
 import com.jogamp.opencl.CLCommandQueue;
 import com.jogamp.opencl.CLContext;
 import com.jogamp.opencl.CLDevice;
@@ -37,28 +38,30 @@ public class App
             CLCommandQueue queue = device.createCommandQueue();
 
             int elementCount = 1; // Length of arrays to process
+//            int localWorkSize = 1;
             int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
             int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
 
             // load sources, create and build program
             CLProgram program = context.createProgram(App.class.getResourceAsStream("kernel.cl")).build();
             
-            float rejected = 0;
-
+            CLBuffer<FloatBuffer> rejected = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+            
             // get a reference to the kernel function with the name 'VectorAdd'
             // and map the buffers to its input parameters.
             CLKernel kernel = program.createCLKernel("RunSimulation");
-            kernel.putArg(rejected);
+            kernel.putArgs(rejected).putArg(elementCount);
 
             // asynchronous write of data to GPU device,
             // followed by blocking read to get the computed results back.
             long time = nanoTime();
-            queue.put1DRangeKernel(kernel, 0, globalWorkSize, localWorkSize);
+            queue.put1DRangeKernel(kernel, 0, globalWorkSize, localWorkSize)
+                .putReadBuffer(rejected, true);
             time = nanoTime() - time;
 
             // print first few elements of the resulting buffer to the console.
             
-            out.println("Rejected elements: " + rejected);
+            out.println("Rejected elements: " + rejected.getBuffer().get(0));
 
             out.println("computation took: "+(time/1000000)+"ms");
             

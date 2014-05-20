@@ -120,8 +120,16 @@ bool full(const queue *q)
 	return q->k == q->p-1 || (q->k == QUEUE_SIZE && q->p == 0);
 }
 
-kernel void RunSimulation(global float *L)
+kernel void RunSimulation(global float *L, int numElements)
 {
+
+    // get index into global data array
+    int iGID = get_global_id(0);
+
+    // bound check (equivalent to the limit on a 'for' loop for standard/serial C code
+    if (iGID >= numElements) {
+        return;
+    }
 	ulong seed = RANDOM_SEED;
 
 	int i;
@@ -157,7 +165,7 @@ kernel void RunSimulation(global float *L)
 		}
 	}
 
-	*L = ((float)rejected) / (accepted + rejected);
+	L[iGID] = ((float)rejected) / (accepted + rejected);
 }
 
 
