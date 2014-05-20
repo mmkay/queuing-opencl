@@ -108,6 +108,8 @@ float front(const queue * q)
 void pop(queue *q)
 {
 	q->p++;
+	if(q->p > QUEUE_SIZE)
+		q->p = 0;
 }
 void push(queue *q, float l)
 {
