@@ -82,9 +82,9 @@ float MoroInvCNDgpu(unsigned int x)
 
 float normDistribution(ulong *seed, float mean, float dev)
 {
-	float rand = MoroInvCNDgpu(random(seed));
+	float out = MoroInvCNDgpu(random(seed))*dev + mean;
 
-	return rand*dev + mean;
+	return out>=0 ? out : 0;
 }
 
 typedef struct queue
@@ -156,7 +156,7 @@ kernel void RunSimulation(global float *L, int numElements)
 		}
 
 		if(!empty(&q))
-			time = interval;
+			time += interval;
 
 		if(full(&q))
 			rejected++;
