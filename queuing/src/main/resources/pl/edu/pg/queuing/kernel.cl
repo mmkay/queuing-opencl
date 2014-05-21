@@ -84,7 +84,7 @@ float normDistribution(ulong *seed, float mean, float dev)
 {
 	float out = MoroInvCNDgpu(random(seed))*dev + mean;
 
-	return out>=0 ? out : 0;
+	return max(out, 0.01);
 }
 
 typedef struct queue
