@@ -1,8 +1,3 @@
-#define INTERVAL_MEAN  10
-#define INTERVAL_DEV  3
-#define REQUIREMENT_MEAN  10
-#define REQUIREMENT_DEV  5
-#define QUEUE_SIZE  10
 #define RANDOM_SEED 24352445523
 #define TASK_NUMBER 100000
 
@@ -12,7 +7,6 @@ uint random(ulong * seed)
 	*seed = (*seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
 	return *seed >> 16;
 }
-
 //Moro's Inverse Cumulative Normal Distribution function approximation from NVIDIA example
 float MoroInvCNDgpu(unsigned int x)
 {
@@ -79,27 +73,26 @@ float MoroInvCNDgpu(unsigned int x)
 	// to get the positive side of the bell curve
 	return negate ? -z : z;
 }
-
+//random number from normal distribution
 float normDistribution(ulong *seed, float mean, float dev)
 {
 	float out = MoroInvCNDgpu(random(seed))*dev + mean;
 
-	return max(out, 0.01);
+	return max(out, 0.0001);
 }
 
+//queue data type and manipulation functions
 typedef struct queue
 {
-	float data[QUEUE_SIZE+1];
+	float data[MAX_QUEUE_SIZE+1];
 	int p,k; //pierwszy, zaostatni
+	int max_size;
 } queue;
-
-void init(queue * q)
+void init(queue * q, int max_size)
 {
 	q->p = q->k = 0;
-}
-bool empty(const queue *q)
-{
-	return q->p == q->k;
+
+	q->max_size = max_size;
 }
 float front(const queue * q)
 {
@@ -108,44 +101,47 @@ float front(const queue * q)
 void pop(queue *q)
 {
 	q->p++;
-	if(q->p > QUEUE_SIZE)
+	if(q->p > q->max_size)
 		q->p = 0;
 }
 void push(queue *q, float l)
 {
 	q->data[q->k++] = l;
-	if(q->k > QUEUE_SIZE)
+	if(q->k > q->max_size)
 		q->k = 0;
+}
+bool empty(const queue *q)
+{
+	return q->p == q->k;
 }
 bool full(const queue *q)
 {
-	return q->k == q->p-1 || (q->k == QUEUE_SIZE && q->p == 0);
+	return q->k == q->p-1 || (q->k == q->max_size && q->p == 0);
 }
 
-kernel void RunSimulation(global float *L, int numElements)
+kernel void RunSimulation(global float *L, int numElements, float interval_mean, float interval_dev, float requirement_mean, float requirement_dev, int queue_size)
 {
+	// get index into global data array
+	int iGID = get_global_id(0);
 
-    // get index into global data array
-    int iGID = get_global_id(0);
+	// bound check (equivalent to the limit on a 'for' loop for standard/serial C code
+	if (iGID >= numElements)
+		return;
 
-    // bound check (equivalent to the limit on a 'for' loop for standard/serial C code
-    if (iGID >= numElements) {
-        return;
-    }
-	ulong seed = RANDOM_SEED;
+	ulong seed = RANDOM_SEED + iGID;
 
 	int i;
 	float time = 0; //czas, jaki juz przetwarzamy pierwszy element
 	int accepted = 0, rejected = 0;
 
 	queue q;
-	init(&q);
+	init(&q, queue_size);
 
 	for(i=0; i<TASK_NUMBER; ++i)
 	{
 		//wygeneruj kolejne zadanie
-		float interval = normDistribution(&seed, INTERVAL_MEAN, INTERVAL_DEV);
-		float req = normDistribution(&seed, REQUIREMENT_MEAN, REQUIREMENT_DEV);
+		float interval = normDistribution(&seed, interval_mean, interval_dev);
+		float req = normDistribution(&seed, requirement_mean, requirement_dev);
 
 		//przetworz zadania w kolejce
 		while(!empty(&q) && front(&q) - time < interval)
@@ -158,6 +154,7 @@ kernel void RunSimulation(global float *L, int numElements)
 		if(!empty(&q))
 			time += interval;
 
+		//dodaj nowy element
 		if(full(&q))
 			rejected++;
 		else
