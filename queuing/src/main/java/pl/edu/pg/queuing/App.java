@@ -41,6 +41,13 @@ public class App
 //            int localWorkSize = 1;
             int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
             int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
+            
+          //float interval_mean, float interval_dev, float requirement_mean, float requirement_dev, int queue_size
+            float intervalMean = 10.0f;
+            float intervalDev = 3.0f;
+            float requirementMean = 10.0f;
+            float requirementDev = 5.0f;
+            int queueSize = 10;
 
             // load sources, create and build program
             CLProgram program = context.createProgram(App.class.getResourceAsStream("kernel.cl")).build();
@@ -50,7 +57,8 @@ public class App
             // get a reference to the kernel function with the name 'VectorAdd'
             // and map the buffers to its input parameters.
             CLKernel kernel = program.createCLKernel("RunSimulation");
-            kernel.putArgs(rejected).putArg(elementCount);
+            kernel.putArgs(rejected).putArg(elementCount).putArg(intervalMean).putArg(intervalDev)
+            	.putArg(requirementMean).putArg(requirementDev).putArg(queueSize);
 
             // asynchronous write of data to GPU device,
             // followed by blocking read to get the computed results back.

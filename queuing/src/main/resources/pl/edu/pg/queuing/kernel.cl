@@ -1,5 +1,6 @@
 #define RANDOM_SEED 24352445523
 #define TASK_NUMBER 100000
+#define MAX_QUEUE_SIZE 1000 // TODO temporary, fix it
 
 //random algorithm from Java
 uint random(ulong * seed)
@@ -78,7 +79,7 @@ float normDistribution(ulong *seed, float mean, float dev)
 {
 	float out = MoroInvCNDgpu(random(seed))*dev + mean;
 
-	return max(out, 0.0001);
+	return max(out, 0.0001f);
 }
 
 //queue data type and manipulation functions
