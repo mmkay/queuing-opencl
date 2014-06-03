@@ -67,7 +67,9 @@ public class App
             // followed by blocking read to get the computed results back.
             long time = nanoTime();
             queue.put1DRangeKernel(kernel, 0, globalWorkSize, localWorkSize)
-                .putReadBuffer(rejected, true);
+                .putReadBuffer(rejected, true)
+                .putReadBuffer(meanSystemDelay, true)
+                .putReadBuffer(processingTime, true);
             time = nanoTime() - time;
 
             // print first few elements of the resulting buffer to the console.
