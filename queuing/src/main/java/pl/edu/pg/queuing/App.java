@@ -14,6 +14,8 @@ import com.jogamp.opencl.CLDevice;
 import com.jogamp.opencl.CLKernel;
 import com.jogamp.opencl.CLProgram;
 
+import mpi.*;
+
 /**
  * Hello world!
  * based on https://github.com/JogAmp/jocl-demos/blob/master/src/com/jogamp/opencl/demos/hellojocl/HelloJOCL.java
@@ -21,6 +23,11 @@ import com.jogamp.opencl.CLProgram;
 public class App 
 {
 	public static void main(String[] args) throws IOException {
+		
+		// set up MPI
+		MPI.Init(args);
+		int myRank = MPI.COMM_WORLD.Rank();
+		int mpiSize = MPI.COMM_WORLD.Size();
 
         // set up (uses default CLPlatform and creates context for all devices)
         CLContext context = CLContext.create();
@@ -86,6 +93,7 @@ public class App
         }finally{
             // cleanup all resources associated with this context.
             context.release();
+        	MPI.Finalize();
         }
 
     }

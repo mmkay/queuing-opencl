@@ -78,5 +78,20 @@
 			<artifactId>gluegen-rt-main</artifactId>
 			<version>2.0.2</version>
 		</dependency>
+		<!-- MPJ Express -->
+		<dependency>
+			<groupId>mpi</groupId>
+			<artifactId>mpi</artifactId>
+			<version>0.42</version>
+		</dependency>
 	</dependencies>
+	
+	<repositories>
+	    <!--other repositories if any-->
+	    <repository>
+	        <id>project.local</id>
+	        <name>project</name>
+	        <url>file:${project.basedir}/repo</url>
+	    </repository>
+	</repositories>
 </project>
