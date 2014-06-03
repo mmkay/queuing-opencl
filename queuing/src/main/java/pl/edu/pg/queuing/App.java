@@ -53,11 +53,14 @@ public class App
             CLProgram program = context.createProgram(App.class.getResourceAsStream("kernel.cl")).build();
             
             CLBuffer<FloatBuffer> rejected = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+            CLBuffer<FloatBuffer> meanSystemDelay = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+            CLBuffer<FloatBuffer> processingTime = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
             
             // get a reference to the kernel function with the name 'VectorAdd'
             // and map the buffers to its input parameters.
             CLKernel kernel = program.createCLKernel("RunSimulation");
-            kernel.putArgs(rejected).putArg(elementCount).putArg(intervalMean).putArg(intervalDev)
+            kernel.putArgs(rejected).putArgs(meanSystemDelay).putArgs(processingTime)
+            	.putArg(elementCount).putArg(intervalMean).putArg(intervalDev)
             	.putArg(requirementMean).putArg(requirementDev).putArg(queueSize);
 
             // asynchronous write of data to GPU device,
@@ -70,6 +73,8 @@ public class App
             // print first few elements of the resulting buffer to the console.
             
             out.println("Rejected elements: " + rejected.getBuffer().get(0));
+            out.println("Mean system delay: " + meanSystemDelay.getBuffer().get(0));
+            out.println("Processing time: " + processingTime.getBuffer().get(0));
 
             out.println("computation took: "+(time/1000000)+"ms");
             
