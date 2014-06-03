@@ -82,7 +82,7 @@ public class App
             // print first few elements of the resulting buffer to the console.
             
             for (int i = 0; i < elementCount; i++) {
-            	out.println("Thread " + i);
+            	out.println("Rank " + myRank + " Thread " + i);
 	            out.println("Rejected elements: " + rejected.getBuffer().get(i));
 	            out.println("Mean system delay: " + meanSystemDelay.getBuffer().get(i));
 	            out.println("Processing time: " + processingTime.getBuffer().get(i));
