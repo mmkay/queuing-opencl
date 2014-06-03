@@ -1,7 +1,7 @@
 /* vim: set filetype=opencl: */
 
 #define RANDOM_SEED 24352445523
-#define TASK_NUMBER 10000000
+#define TASK_NUMBER 100000
 #define MAX_QUEUE_SIZE 1000 // TODO temporary, fix it
 
 //random algorithm from Java

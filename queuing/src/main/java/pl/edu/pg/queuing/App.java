@@ -37,7 +37,7 @@ public class App
             // create command queue on device.
             CLCommandQueue queue = device.createCommandQueue();
 
-            int elementCount = 1; // Length of arrays to process
+            int elementCount = 100; // Length of arrays to process
 //            int localWorkSize = 1;
             int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
             int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
@@ -72,7 +72,7 @@ public class App
 
             // print first few elements of the resulting buffer to the console.
             
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < elementCount; i++) {
             	out.println("Thread " + i);
 	            out.println("Rejected elements: " + rejected.getBuffer().get(i));
 	            out.println("Mean system delay: " + meanSystemDelay.getBuffer().get(i));
