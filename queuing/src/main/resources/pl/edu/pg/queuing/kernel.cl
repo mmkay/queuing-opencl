@@ -1,3 +1,5 @@
+/* vim: set filetype=opencl: */
+
 #define RANDOM_SEED 24352445523
 #define TASK_NUMBER 100000
 #define MAX_QUEUE_SIZE 1000 // TODO temporary, fix it
@@ -120,7 +122,20 @@ bool full(const queue *q)
 	return q->k == q->p-1 || (q->k == q->max_size && q->p == 0);
 }
 
-kernel void RunSimulation(global float *L, int numElements, float interval_mean, float interval_dev, float requirement_mean, float requirement_dev, int queue_size)
+/*
+input
+	numElements			liczba watkow do uruchomienia
+	interval_mean		srednia interwalu miedzy zadaniami
+	interval_dev		odchylenie standardowe interwalu miedzy zadaniami
+	requirement_mean	srednie wymaganie zadania
+	requirement_dev		odchylenie standardowe wymagania zadania
+	queue_size			rozmiarkolejki
+output
+	L	frakcja odrzuconych zadań
+	d	sredni opoznienie systemowe (czas przebywania zadania w systemie)
+	t	czas przetwarzania
+*/
+kernel void RunSimulation(global float *L, global float *d, global float *t, int numElements, float interval_mean, float interval_dev, float requirement_mean, float requirement_dev, int queue_size)
 {
 	// get index into global data array
 	int iGID = get_global_id(0);
@@ -132,7 +147,9 @@ kernel void RunSimulation(global float *L, int numElements, float interval_mean,
 	ulong seed = RANDOM_SEED + iGID;
 
 	int i;
-	float time = 0; //czas, jaki juz przetwarzamy pierwszy element
+	float processed_time = 0; //czas, jaki juz przetwarzamy pierwszy element
+	float time = 0; //czas calej symulacji
+	float b = 0; //suma czasow opoznienia systemowego
 	int accepted = 0, rejected = 0;
 
 	queue q;
@@ -145,27 +162,51 @@ kernel void RunSimulation(global float *L, int numElements, float interval_mean,
 		float req = normDistribution(&seed, requirement_mean, requirement_dev);
 
 		//przetworz zadania w kolejce
-		while(!empty(&q) && front(&q) - time < interval)
+		while(!empty(&q) && front(&q) - processed_time < interval)
 		{
-			time = 0;
-			interval -= (front(&q) - time);
+			//uplyw czasu
+			interval -= front(&q) - processed_time;
+			time += front(&q) - processed_time;
+
+			//usuniecie elementu
 			pop(&q);
+			processed_time = 0;
+			b += time; //czas wyjscia z systemu
 		}
 
+		//przetworz kawalek pierwszego zadania
 		if(!empty(&q))
-			time += interval;
+			processed_time += interval;
+
+		time += interval;
 
 		//dodaj nowy element
 		if(full(&q))
 			rejected++;
 		else
 		{
+			b -= time; //czas przyjscia do systemu
 			push(&q, req);
 			accepted++;
 		}
 	}
 
+	//przetworz pozostale w kolejce
+	while(!empty(&q))
+	{
+		//uplyw czasu
+		time += front(&q) - processed_time;
+
+		//usuniecie zadania
+		pop(&q);
+		processed_time = 0;
+		b += time; //czas wyjscia z systemu
+	}
+
+	//output
+	d[iGID] = b/accepted;
 	L[iGID] = ((float)rejected) / (accepted + rejected);
+	t[iGID] = time;
 }
 
 
