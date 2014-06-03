@@ -74,9 +74,9 @@ public class App
             
             for (int i = 0; i < 100; i++) {
             	out.println("Thread " + i);
-	            out.println("Rejected elements: " + rejected.getBuffer().get(0));
-	            out.println("Mean system delay: " + meanSystemDelay.getBuffer().get(0));
-	            out.println("Processing time: " + processingTime.getBuffer().get(0));
+	            out.println("Rejected elements: " + rejected.getBuffer().get(i));
+	            out.println("Mean system delay: " + meanSystemDelay.getBuffer().get(i));
+	            out.println("Processing time: " + processingTime.getBuffer().get(i));
             }
 
             out.println("computation took: "+(time/1000000)+"ms");
