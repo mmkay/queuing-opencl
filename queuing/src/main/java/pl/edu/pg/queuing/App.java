@@ -40,6 +40,16 @@ public class App
         System.out.println("created "+context);
         
 		if (myRank != 0) { // slave
+			
+			float[] buff = new float[5];
+			
+			MPI.COMM_WORLD.Recv(buff, 0, 5, MPI.FLOAT, 0, MPI.ANY_TAG);
+			
+			out.print("Data read by slave " + myRank + ":");
+			for (float i : buff) {
+				out.print(i + ",");
+			}
+			out.println();
 	        
 	        // always make sure to release the context under all circumstances
 	        // not needed for this particular sample but recommented
@@ -117,6 +127,18 @@ public class App
 				}
 				
 				out.println("Params size: " + params.size());
+				
+				for (int i = 1; i < mpiSize; i++) {
+					float[] buff;
+					if (!params.isEmpty()) {
+						Params param = params.get(0);
+						buff = new float[] {param.intervalMean, param.intervalDev, param.requirementMean, param.requirementDev, param.queueSize};
+						params.remove(0);
+					} else {
+						buff = new float[] {0f, 0f, 0f, 0f, 0f};
+					}
+					MPI.COMM_WORLD.Send(buff, 0, 5, MPI.FLOAT, i, 0);
+				}
 				
 				// TODO send first params
 		 
