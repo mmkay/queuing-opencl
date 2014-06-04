@@ -67,7 +67,9 @@ public class App
 			        try{
 			            
 			            // select fastest device
-			            CLDevice device = context.getMaxFlopsDevice();
+                                    int rand = new Random().nextInt(context.getDevices().length);
+//			            CLDevice device = context.getMaxFlopsDevice();
+                                    CLDevice device = context.getDevices()[rand];
 			            System.out.println("using "+device);
 			
 			            // create command queue on device.
@@ -157,10 +159,8 @@ public class App
 			}
 			try {
 				 
-				bw = new BufferedWriter(new 
-FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
-				br = new BufferedReader(new 
-FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
+				br = new BufferedReader(new FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
+				bw = new BufferedWriter(new FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
 				while ((line = br.readLine()) != null) {
 					String[] param = line.split(",");
 					params.add(new Params(
