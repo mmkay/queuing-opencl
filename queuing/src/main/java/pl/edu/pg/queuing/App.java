@@ -42,75 +42,99 @@ public class App
 		if (myRank != 0) { // slave
 			
 			float[] buff = new float[5];
+			float[] sendBuff = new float[8];
+			boolean stop = false;
 			
-			MPI.COMM_WORLD.Recv(buff, 0, 5, MPI.FLOAT, 0, MPI.ANY_TAG);
+			if (!stop) { //TODO change to while
+				
+				MPI.COMM_WORLD.Recv(buff, 0, 5, MPI.FLOAT, 0, MPI.ANY_TAG);
+				
+				out.print("Data read by slave " + myRank + ":");
+				stop = true;
+				for (float i : buff) {
+					if (i != 0) {
+						stop = false;
+					}
+					out.print(i + ",");
+				}
+				out.println();
+				if (!stop) {
+			        
+			        // always make sure to release the context under all circumstances
+			        // not needed for this particular sample but recommented
+			        try{
+			            
+			            // select fastest device
+			            CLDevice device = context.getMaxFlopsDevice();
+			            System.out.println("using "+device);
 			
-			out.print("Data read by slave " + myRank + ":");
-			for (float i : buff) {
-				out.print(i + ",");
+			            // create command queue on device.
+			            CLCommandQueue queue = device.createCommandQueue();
+			
+			            int elementCount = 100; // Length of arrays to process
+			//            int localWorkSize = 1;
+			            int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
+			            int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
+			            
+			            float intervalMean = buff[0];
+			            float intervalDev = buff[1];
+			            float requirementMean = buff[2];
+			            float requirementDev = buff[3];
+			            int queueSize = Float.valueOf(buff[4]).intValue();
+			
+			            // load sources, create and build program
+			            CLProgram program = context.createProgram(App.class.getResourceAsStream("kernel.cl")).build();
+			            
+			            CLBuffer<FloatBuffer> rejected = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+			            CLBuffer<FloatBuffer> meanSystemDelay = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+			            CLBuffer<FloatBuffer> processingTime = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
+			            
+			            // get a reference to the kernel function with the name 'VectorAdd'
+			            // and map the buffers to its input parameters.
+			            CLKernel kernel = program.createCLKernel("RunSimulation");
+			            kernel.putArgs(rejected).putArgs(meanSystemDelay).putArgs(processingTime)
+			            	.putArg(elementCount).putArg(intervalMean).putArg(intervalDev)
+			            	.putArg(requirementMean).putArg(requirementDev).putArg(queueSize);
+			
+			            // asynchronous write of data to GPU device,
+			            // followed by blocking read to get the computed results back.
+			            long time = nanoTime();
+			            queue.put1DRangeKernel(kernel, 0, globalWorkSize, localWorkSize)
+			                .putReadBuffer(rejected, true)
+			                .putReadBuffer(meanSystemDelay, true)
+			                .putReadBuffer(processingTime, true);
+			            time = nanoTime() - time;
+			
+			            // print first few elements of the resulting buffer to the console.
+			            
+			            float rejectedResult = 0f;
+			            float meanSystemDelayResult = 0f;
+			            float processingTimeResult = 0f;
+			            
+			            for (int i = 0; i < elementCount; i++) {
+				            rejectedResult += rejected.getBuffer().get(i);
+				            meanSystemDelayResult += meanSystemDelay.getBuffer().get(i);
+				            processingTimeResult += processingTime.getBuffer().get(i);
+			            }
+			            rejectedResult /= elementCount;
+			            meanSystemDelayResult /= elementCount;
+			            processingTimeResult /= elementCount;
+			            
+			            out.println("Params: intervalMean " + intervalMean + ", intervalDev" + intervalDev +
+			            		", requirementMean " + requirementMean + ", requirementDev " + requirementDev +
+			            		", queueSize " + queueSize + ", rejectedResult " + rejectedResult + 
+			            		", meanSystemDelayResult " + meanSystemDelayResult + 
+			            		", processingTimeResult " + processingTimeResult); 
+			
+			            out.println("computation took: "+(time/1000000)+"ms");
+			            
+			        }finally{
+			            
+			        }
+				}
 			}
-			out.println();
 	        
-	        // always make sure to release the context under all circumstances
-	        // not needed for this particular sample but recommented
-	        try{
-	            
-	            // select fastest device
-	            CLDevice device = context.getMaxFlopsDevice();
-	            System.out.println("using "+device);
-	
-	            // create command queue on device.
-	            CLCommandQueue queue = device.createCommandQueue();
-	
-	            int elementCount = 10; // Length of arrays to process
-	//            int localWorkSize = 1;
-	            int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
-	            int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
-	            
-	            float intervalMean = 10.0f;
-	            float intervalDev = 3.0f;
-	            float requirementMean = 10.0f;
-	            float requirementDev = 5.0f;
-	            int queueSize = 10;
-	
-	            // load sources, create and build program
-	            CLProgram program = context.createProgram(App.class.getResourceAsStream("kernel.cl")).build();
-	            
-	            CLBuffer<FloatBuffer> rejected = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
-	            CLBuffer<FloatBuffer> meanSystemDelay = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
-	            CLBuffer<FloatBuffer> processingTime = context.createFloatBuffer(globalWorkSize, WRITE_ONLY);
-	            
-	            // get a reference to the kernel function with the name 'VectorAdd'
-	            // and map the buffers to its input parameters.
-	            CLKernel kernel = program.createCLKernel("RunSimulation");
-	            kernel.putArgs(rejected).putArgs(meanSystemDelay).putArgs(processingTime)
-	            	.putArg(elementCount).putArg(intervalMean).putArg(intervalDev)
-	            	.putArg(requirementMean).putArg(requirementDev).putArg(queueSize);
-	
-	            // asynchronous write of data to GPU device,
-	            // followed by blocking read to get the computed results back.
-	            long time = nanoTime();
-	            queue.put1DRangeKernel(kernel, 0, globalWorkSize, localWorkSize)
-	                .putReadBuffer(rejected, true)
-	                .putReadBuffer(meanSystemDelay, true)
-	                .putReadBuffer(processingTime, true);
-	            time = nanoTime() - time;
-	
-	            // print first few elements of the resulting buffer to the console.
-	            
-	            for (int i = 0; i < elementCount; i++) {
-	            	out.println("Rank " + myRank + " Thread " + i);
-		            out.println("Rank " + myRank + " Rejected elements: " + rejected.getBuffer().get(i));
-		            out.println("Rank " + myRank + " Mean system delay: " + meanSystemDelay.getBuffer().get(i));
-		            out.println("Rank " + myRank + " Processing time: " + processingTime.getBuffer().get(i));
-	            }
-	
-	            out.println("computation took: "+(time/1000000)+"ms");
-	            
-	        }finally{
-	            // cleanup all resources associated with this context.
-	            context.release();
-	        }
+	        context.release();
 		} else { // master
 			ArrayList<Params> params = new ArrayList<>();
 			BufferedReader br = null;
