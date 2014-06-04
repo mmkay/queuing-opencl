@@ -4,9 +4,11 @@ import static com.jogamp.opencl.CLMemory.Mem.*;
 import static java.lang.System.*;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -45,7 +47,7 @@ public class App
 			float[] sendBuff = new float[8];
 			boolean stop = false;
 			
-			if (!stop) { //TODO change to while
+			while (!stop) { //TODO change to while
 				
 				MPI.COMM_WORLD.Recv(buff, 0, 5, MPI.FLOAT, 0, MPI.ANY_TAG);
 				
@@ -128,6 +130,11 @@ public class App
 			
 			            out.println("computation took: "+(time/1000000)+"ms");
 			            
+			            sendBuff = new float[] {intervalMean, intervalDev, requirementMean, requirementDev,
+			            		Integer.valueOf(queueSize).floatValue(), rejectedResult, meanSystemDelayResult,
+			            		processingTimeResult};
+			            MPI.COMM_WORLD.Send(sendBuff, 0, 8, MPI.FLOAT, 0, 0);
+			            
 			        }finally{
 			            
 			        }
@@ -135,13 +142,23 @@ public class App
 			}
 	        
 	        context.release();
+	        MPI.Finalize();
 		} else { // master
 			ArrayList<Params> params = new ArrayList<>();
 			BufferedReader br = null;
+			BufferedWriter bw = null;
 			String line;
+			float[] recvBuff = new float[8];
+			float[] buff = new float[5];
+			
+			ArrayList<Integer> workingSlaves = new ArrayList<>();
+			for (int i = 1 ; i < mpiSize; i++) {
+				workingSlaves.add(i);
+			}
 			try {
 				 
 				br = new BufferedReader(new FileReader("./input.txt"));
+				bw = new BufferedWriter(new FileWriter("./result.csv"));
 				while ((line = br.readLine()) != null) {
 					String[] param = line.split(",");
 					params.add(new Params(
@@ -153,18 +170,40 @@ public class App
 				out.println("Params size: " + params.size());
 				
 				for (int i = 1; i < mpiSize; i++) {
-					float[] buff;
 					if (!params.isEmpty()) {
 						Params param = params.get(0);
 						buff = new float[] {param.intervalMean, param.intervalDev, param.requirementMean, param.requirementDev, param.queueSize};
 						params.remove(0);
 					} else {
 						buff = new float[] {0f, 0f, 0f, 0f, 0f};
+						workingSlaves.remove(Integer.valueOf(i));
 					}
 					MPI.COMM_WORLD.Send(buff, 0, 5, MPI.FLOAT, i, 0);
 				}
 				
-				// TODO send first params
+				while (workingSlaves.size() > 0) {
+					for (Integer i : workingSlaves) {
+						MPI.COMM_WORLD.Recv(recvBuff, 0, 8, MPI.FLOAT, i, MPI.ANY_TAG);
+						out.print("Received data from " + i + ":");
+						String writeLine = "";
+						for (float j : recvBuff) {
+							writeLine += j + ",";
+						}
+						out.println(writeLine);
+						bw.write(writeLine);
+						bw.newLine();
+						if (!params.isEmpty()) {
+							Params param = params.get(0);
+							buff = new float[] {param.intervalMean, param.intervalDev, param.requirementMean, param.requirementDev, param.queueSize};
+							params.remove(0);
+						} else {
+							buff = new float[] {0f, 0f, 0f, 0f, 0f};
+							workingSlaves.remove(Integer.valueOf(i)); //TODO check, might cause problems
+							break;
+						}
+						MPI.COMM_WORLD.Send(buff, 0, 5, MPI.FLOAT, i, 0);
+					}
+				}
 		 
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
@@ -178,10 +217,17 @@ public class App
 						e.printStackTrace();
 					}
 				}
+				if (bw != null) {
+					try {
+						bw.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 			}
 			out.println("I am the master, my rank is " + myRank);
+			MPI.Finalize();
 		}
-    	MPI.Finalize();
 
     }
 
