@@ -157,8 +157,10 @@ public class App
 			}
 			try {
 				 
-				br = new BufferedReader(new FileReader("./input.txt"));
-				bw = new BufferedWriter(new FileWriter("./result.csv"));
+				bw = new BufferedWriter(new 
+FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
+				br = new BufferedReader(new 
+FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
 				while ((line = br.readLine()) != null) {
 					String[] param = line.split(",");
 					params.add(new Params(
