@@ -1,19 +1,20 @@
 package pl.edu.pg.queuing;
 
-import static com.jogamp.opencl.CLMemory.Mem.*;
-import static java.lang.System.*;
+import static com.jogamp.opencl.CLMemory.Mem.WRITE_ONLY;
+import static java.lang.System.nanoTime;
+import static java.lang.System.out;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
+
+import mpi.MPI;
 
 import com.jogamp.opencl.CLBuffer;
 import com.jogamp.opencl.CLCommandQueue;
@@ -21,8 +22,6 @@ import com.jogamp.opencl.CLContext;
 import com.jogamp.opencl.CLDevice;
 import com.jogamp.opencl.CLKernel;
 import com.jogamp.opencl.CLProgram;
-
-import mpi.*;
 
 /**
  * Hello world!
@@ -47,7 +46,7 @@ public class App
 			float[] sendBuff = new float[8];
 			boolean stop = false;
 			
-			while (!stop) { //TODO change to while
+			while (!stop) {
 				
 				MPI.COMM_WORLD.Recv(buff, 0, 5, MPI.FLOAT, 0, MPI.ANY_TAG);
 				
@@ -146,6 +145,7 @@ public class App
 	        context.release();
 	        MPI.Finalize();
 		} else { // master
+			double startTime = MPI.Wtime();
 			ArrayList<Params> params = new ArrayList<>();
 			BufferedReader br = null;
 			BufferedWriter bw = null;
@@ -159,8 +159,8 @@ public class App
 			}
 			try {
 				 
-				br = new BufferedReader(new FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
-				bw = new BufferedWriter(new FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
+				br = new BufferedReader(new FileReader("./input.txt"));
+				bw = new BufferedWriter(new FileWriter("./result.csv"));
 				while ((line = br.readLine()) != null) {
 					String[] param = line.split(",");
 					params.add(new Params(
@@ -227,7 +227,10 @@ public class App
 					}
 				}
 			}
+			double endTime = MPI.Wtime();
+			double computationTime = endTime - startTime;
 			out.println("I am the master, my rank is " + myRank);
+			out.println("Whole computation took " + computationTime + " seconds");
 			MPI.Finalize();
 		}
 
