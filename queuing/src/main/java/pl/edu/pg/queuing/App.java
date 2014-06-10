@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import mpi.MPI;
@@ -159,10 +160,10 @@ public class App
 			}
 			try {
 				 
-				br = new BufferedReader(new 
-FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
-				bw = new BufferedWriter(new 
-FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
+				br = new BufferedReader(new FileReader("/macierz/home/131550km/Code/queuing-opencl/queuing/input.txt"));
+//				br = new BufferedReader(new FileReader("./input.txt"));
+				bw = new BufferedWriter(new FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
+//				bw = new BufferedWriter(new FileWriter("./result.csv"));
 				while ((line = br.readLine()) != null) {
 					String[] param = line.split(",");
 					params.add(new Params(
@@ -184,8 +185,11 @@ FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
 					}
 					MPI.COMM_WORLD.Send(buff, 0, 5, MPI.FLOAT, i, 0);
 				}
-				
+
+				List<Integer> slavesToRemove = new ArrayList<>();
 				while (workingSlaves.size() > 0) {
+					workingSlaves.removeAll(slavesToRemove);
+					slavesToRemove.clear();
 					for (Integer i : workingSlaves) {
 						MPI.COMM_WORLD.Recv(recvBuff, 0, 8, MPI.FLOAT, i, MPI.ANY_TAG);
 						out.print("Received data from " + i + ":");
@@ -202,8 +206,8 @@ FileWriter("/macierz/home/131550km/Code/queuing-opencl/queuing/result.csv"));
 							params.remove(0);
 						} else {
 							buff = new float[] {0f, 0f, 0f, 0f, 0f};
-							workingSlaves.remove(Integer.valueOf(i)); //TODO check, might cause problems
-							break;
+							slavesToRemove.add(i);
+//							workingSlaves.remove(Integer.valueOf(i));
 						}
 						MPI.COMM_WORLD.Send(buff, 0, 5, MPI.FLOAT, i, 0);
 					}
