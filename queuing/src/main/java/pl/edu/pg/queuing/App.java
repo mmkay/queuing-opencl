@@ -70,14 +70,14 @@ public class App
 			            
 			            // select fastest device
                                     int rand = new Random().nextInt(context.getDevices().length);
-//			            CLDevice device = context.getMaxFlopsDevice();
-                                    CLDevice device = context.getDevices()[rand];
+			            CLDevice device = context.getMaxFlopsDevice();
+//                                    CLDevice device = context.getDevices()[rand];
 			            System.out.println("using "+device);
 			
 			            // create command queue on device.
 			            CLCommandQueue queue = device.createCommandQueue();
 			
-			            int elementCount = 500; // Length of arrays to process
+			            int elementCount = 100; // Length of arrays to process
 			//            int localWorkSize = 1;
 			            int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
 			            int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
