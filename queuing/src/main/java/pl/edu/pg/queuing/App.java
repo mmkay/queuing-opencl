@@ -77,7 +77,7 @@ public class App
 			            // create command queue on device.
 			            CLCommandQueue queue = device.createCommandQueue();
 			
-			            int elementCount = 100; // Length of arrays to process
+			            int elementCount = 500; // Length of arrays to process
 			//            int localWorkSize = 1;
 			            int localWorkSize = Math.min(device.getMaxWorkGroupSize(), 256); // Local work size dimensions
 			            int globalWorkSize = roundUp(localWorkSize, elementCount); // rounded up to the nearest multiple of the localWorkSize
