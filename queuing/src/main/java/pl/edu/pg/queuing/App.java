@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
@@ -150,7 +151,7 @@ public class App
 	        }
 	        MPI.Finalize();
 		} else { // master
-			double startTime = MPI.Wtime();
+			long startTime = new Date().getTime();
 			ArrayList<Params> params = new ArrayList<>();
 			BufferedReader br = null;
 			BufferedWriter bw = null;
@@ -237,10 +238,10 @@ public class App
 					}
 				}
 			}
-			double endTime = MPI.Wtime();
-			double computationTime = endTime - startTime;
+			long endTime = new Date().getTime();
+			long computationTime = endTime - startTime;
 			out.println("I am the master, my rank is " + myRank);
-			out.println("Whole computation took " + computationTime + " seconds");
+			out.println("Whole computation took " + computationTime + " miliseconds");
 			MPI.Finalize();
 		}
 
