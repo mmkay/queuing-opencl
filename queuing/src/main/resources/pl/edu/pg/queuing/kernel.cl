@@ -104,14 +104,18 @@ float front(const queue * q)
 void pop(queue *q)
 {
 	q->p++;
-	if(q->p > q->max_size)
-		q->p = 0;
+
+	q->p = q->p * (q->p <= q->max_size);
+//	if(q->p > q->max_size)
+//		q->p = 0;
 }
 void push(queue *q, float l)
 {
 	q->data[q->k++] = l;
-	if(q->k > q->max_size)
-		q->k = 0;
+
+	q->k = q->k * (q->k <= q->max_size);
+//	if(q->k > q->max_size)
+//		q->k = 0;
 }
 bool empty(const queue *q)
 {
@@ -175,8 +179,9 @@ kernel void RunSimulation(global float *L, global float *d, global float *t, int
 		}
 
 		//przetworz kawalek pierwszego zadania
-		if(!empty(&q))
-			processed_time += interval;
+		processed_time += interval * (!empty(&q));
+//		if(!empty(&q))
+//			processed_time += interval;
 
 		time += interval;
 
