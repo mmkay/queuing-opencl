@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Random;
 
@@ -142,8 +143,11 @@ public class App
 			        }
 				}
 			}
-	        
-	        context.release();
+	        try {
+	        	context.release();
+	        } catch (ConcurrentModificationException e) {
+	        	
+	        }
 	        MPI.Finalize();
 		} else { // master
 			double startTime = MPI.Wtime();
